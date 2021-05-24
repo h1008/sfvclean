@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
+
+	"sfvclean/internal/stfolder"
 )
 
 type FileList []string
@@ -36,30 +37,26 @@ func (fl FileList) Save(path string) error {
 }
 
 func (fl FileList) Verify() error {
-	rxp, err := regexp.Compile(`~\d{8}-\d{6}`)
-	if err != nil {
-		return err
-	}
 	for _, file := range fl {
 		if !filepath.IsAbs(file) {
-			return fmt.Errorf("path is not absolute: %s", file)
+			return fmt.Errorf("path %s is not absolute", file)
 		}
 
 		if !pathContainsPart(file, ".stversions") {
-			return fmt.Errorf("path is not part of .stversions folder: %s", file)
+			return fmt.Errorf("path %s is not part of .stversions folder", file)
 		}
 
-		if !rxp.MatchString(file) {
-			return fmt.Errorf("file name does not contain timestamp: %s", file)
+		if !stfolder.TimestampRegex.MatchString(file) {
+			return fmt.Errorf("file name %s does not contain timestamp", file)
 		}
 
-		fi, err := os.Stat(file)
+		fi, err := os.Lstat(file)
 		if err != nil {
 			return fmt.Errorf("failed to call stat on file %s: %w", file, err)
 		}
 
 		if !fi.Mode().IsRegular() {
-			return fmt.Errorf("not a regular file %s", file)
+			return fmt.Errorf("%s is not a regular file", file)
 		}
 
 	}

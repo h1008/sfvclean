@@ -13,13 +13,13 @@ type Duration struct {
 
 var ErrInvalidDuration = errors.New("invalid duration")
 
-func ParseDuration(s string) (Duration, error) {
-	l := len(s) - 1
+func ParseDuration(str string) (Duration, error) {
+	l := len(str) - 1
 	if l <= 0 {
 		return Duration{}, ErrInvalidDuration
 	}
 
-	count, err := strconv.Atoi(s[:l])
+	count, err := strconv.Atoi(str[:l])
 	if err != nil {
 		return Duration{}, err
 	}
@@ -28,7 +28,7 @@ func ParseDuration(s string) (Duration, error) {
 		return Duration{}, ErrInvalidDuration
 	}
 
-	switch s[l] {
+	switch str[l] {
 	case 'Y':
 		return Duration{Years: count}, nil
 	case 'M':

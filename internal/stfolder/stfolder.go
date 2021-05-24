@@ -5,8 +5,6 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
-	"sfvclean/internal/filelist"
-	"sort"
 	"strings"
 	"time"
 )
@@ -28,6 +26,16 @@ type Stats struct {
 	TotalNum     int64
 	FilteredSize int64
 	FilteredNum  int64
+}
+
+var TimestampRegex *regexp.Regexp
+
+func init() {
+	var err error
+	TimestampRegex, err = regexp.Compile(`~(\d{8}-\d{6})`)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func Search(root string) ([]*SyncThingFolder, error) {
@@ -66,8 +74,8 @@ func (s *SyncThingFolder) Analyze() error {
 	return nil
 }
 
-func (s *SyncThingFolder) ApplyDateFilter(before time.Time) (filelist.FileList, error) {
-	var fileList filelist.FileList
+func (s *SyncThingFolder) ApplyDateFilter(before time.Time) ([]string, error) {
+	var fileList []string
 	for _, historyItems := range s.historyItems {
 		for i := range historyItems {
 			item := &historyItems[i]
@@ -87,7 +95,6 @@ func (s *SyncThingFolder) ApplyDateFilter(before time.Time) (filelist.FileList, 
 			}
 		}
 	}
-	sort.Strings(fileList)
 	return fileList, nil
 }
 
@@ -143,13 +150,8 @@ func analyzeStversionsFolder(folder string) (map[string][]HistoryItem, error) {
 }
 
 func extractFilename(file string) (string, time.Time, error) {
-	rxp, err := regexp.Compile(`~(\d{8}-\d{6})`)
-	if err != nil {
-		return "", time.Time{}, err
-	}
-
-	matches := rxp.FindStringSubmatch(file)
-	if matches != nil {
+	matches := TimestampRegex.FindStringSubmatch(file)
+	if len(matches) == 2 {
 		t, err := time.ParseInLocation("20060102-150405", matches[1], time.Local)
 		if err != nil {
 			return "", time.Time{}, err
@@ -159,5 +161,5 @@ func extractFilename(file string) (string, time.Time, error) {
 		return original, t, nil
 	}
 
-	return "", time.Time{}, fmt.Errorf("no match found: %v", file)
+	return "", time.Time{}, fmt.Errorf("no match found %v", file)
 }
