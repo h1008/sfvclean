@@ -20,7 +20,6 @@ type HistoryItem struct {
 	HistoryItemPath string
 	Size            int64
 	Timestamp       time.Time
-	OriginalDeleted bool
 	Filtered        bool
 }
 
@@ -57,12 +56,7 @@ func (s *SyncThingFolder) Name() string {
 }
 
 func (s *SyncThingFolder) Analyze() error {
-	existingFiles, err := analyzeOriginalFolder(s.Name())
-	if err != nil {
-		return fmt.Errorf("cannot analyze original folder: %w", err)
-	}
-
-	results, err := analyzeStversionsFolder(s.stversionsPath, existingFiles)
+	results, err := analyzeStversionsFolder(s.stversionsPath)
 	if err != nil {
 		return fmt.Errorf("cannot analyze stversions folder: %w", err)
 	}
@@ -113,39 +107,7 @@ func (s *SyncThingFolder) Stats() Stats {
 	return stats
 }
 
-func analyzeOriginalFolder(folder string) (map[string]struct{}, error) {
-	items := make(map[string]struct{})
-
-	err := filepath.Walk(folder, func(path string, info fs.FileInfo, _ error) error {
-		dir := filepath.Base(path)
-		if dir == ".stversions" || dir == ".stfolder" {
-			return filepath.SkipDir
-		}
-		if dir == ".stignore" {
-			return nil
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		p, err := filepath.Rel(folder, path)
-		if err != nil {
-			return err
-		}
-
-		items[p] = struct{}{}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return items, nil
-}
-
-func analyzeStversionsFolder(folder string, existingFiles map[string]struct{}) (map[string][]HistoryItem, error) {
+func analyzeStversionsFolder(folder string) (map[string][]HistoryItem, error) {
 	items := make(map[string][]HistoryItem)
 	err := filepath.Walk(folder, func(path string, info fs.FileInfo, _ error) error {
 		if info.IsDir() {
@@ -162,13 +124,10 @@ func analyzeStversionsFolder(folder string, existingFiles map[string]struct{}) (
 			return err
 		}
 
-		_, ok := existingFiles[org]
-
 		h := HistoryItem{
 			HistoryItemPath: p,
 			Size:            info.Size(),
 			Timestamp:       t,
-			OriginalDeleted: !ok,
 		}
 
 		items[org] = append(items[org], h)
